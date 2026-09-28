@@ -1,0 +1,6 @@
+schema: spec-driven
+context: |
+  CampusClaw is a Go, MySQL, and static-web classroom materials application.
+  Authentication uses server-side sessions. Each user belongs to one class.
+  Only teachers can upload materials; students and teachers can read materials
+  within their own class.

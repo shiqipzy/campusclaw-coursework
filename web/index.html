@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CampusClaw · 班级材料</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="login" class="login-page">
+    <form id="login-form" class="login-card">
+      <div class="mark">CC</div>
+      <h1>CampusClaw</h1>
+      <p>登录后查看本班材料</p>
+      <label>用户名<input id="username" name="username" autocomplete="username" required></label>
+      <label>密码<input id="password" name="password" type="password" autocomplete="current-password" required></label>
+      <button type="submit">登录</button>
+      <p id="login-error" class="error" role="alert"></p>
+    </form>
+  </div>
+  <div id="workspace" class="workspace" hidden>
+    <header>
+      <div class="brand"><span class="mark small">CC</span><span>CampusClaw <small>班级材料</small></span></div>
+      <div class="account"><span id="identity"></span><button id="logout" class="text-button">退出登录</button></div>
+    </header>
+    <main>
+      <aside>
+        <div class="side-head"><div><span class="eyebrow">MATERIALS</span><h2>本班材料</h2></div><span id="count" class="count"></span></div>
+        <section class="search-panel" aria-label="本班知识库检索">
+          <form id="search-form"><label for="search-query">检索本班材料</label><div class="search-row"><input id="search-query" type="search" minlength="2" maxlength="200" placeholder="输入至少两个字" required><button type="submit">检索</button></div></form>
+          <p id="search-message" role="status" aria-live="polite"></p>
+          <div id="search-results" class="search-results"></div>
+        </section>
+        <div id="list" class="material-list"></div>
+        <section id="upload-panel" class="upload-panel" hidden>
+          <h3>上传材料</h3>
+          <p>仅支持 .txt 和 .md，最大 5 MiB。</p>
+          <form id="upload-form"><input id="file" type="file" name="file" accept=".txt,.md" required><button type="submit">上传并入库</button></form>
+          <p id="upload-message" role="status"></p>
+        </section>
+      </aside>
+      <article>
+        <div id="empty" class="empty">从左侧选择一份材料</div>
+        <div id="detail" hidden>
+          <div class="detail-head"><div><span class="eyebrow">DOCUMENT</span><h2 id="title"></h2><p id="meta"></p></div><a id="download" class="download" href="#">下载原文件</a></div>
+          <pre id="content"></pre>
+        </div>
+      </article>
+    </main>
+  </div>
+  <script src="/app.js"></script>
+</body>
+</html>
