@@ -81,4 +81,4 @@ npx --yes @fission-ai/openspec validate add-skills-streaming-mcp --strict
 
 本次26/26接口脚本通过；真实模型、MCP、SSE、停机错误、断开拒绝、小配额终止和隔离已验证。详见 [验收说明](docs/阶段验收说明.md)、[验证结果](docs/evidence/acceptance-summary.json) 和 [增量规约](openspec/changes/add-skills-streaming-mcp/)。PDF由 `scripts/build_acceptance_report.py` 根据真实证据生成，本机在output/pdf，公开版本在 [阶段性验收报告](docs/CampusClaw阶段性验收报告.pdf)。
 
-本次交付按个人项目阶段性验收整理，权限隔离由接口脚本分别使用A、B班教师和学生账号验证。报告正文及可编辑版本见 [个人项目报告](docs/个人项目阶段性验收报告.md)。
+本次交付按个人项目阶段性验收整理，权限隔离由接口脚本分别使用A、B班教师和学生账号验证。报告按五个验证问题组织，包含8张实际截图及对应JSON记录；可编辑正文见 [个人项目报告](docs/个人项目阶段性验收报告.md)，本次取证见 [report/evidence.json](docs/evidence/report/evidence.json)。需要重新取证时运行 `node scripts/capture_report_evidence.mjs`，脚本会上传验证技能，临时使用模板和绑定配置，结束后恢复原助手设置。

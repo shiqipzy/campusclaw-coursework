@@ -1,0 +1,42 @@
+[
+  {
+    "number": 1,
+    "filename": "figure01-applications.png",
+    "caption": "三个内置 AI 应用及各自的技能、材料绑定"
+  },
+  {
+    "number": 2,
+    "filename": "figure02-template-bindings.png",
+    "caption": "本次验证采用的模板、上传技能和材料配置"
+  },
+  {
+    "number": 3,
+    "filename": "figure04-llm-request.png",
+    "caption": "请求详情中的 system 片段，包含与图2一致的模板正文"
+  },
+  {
+    "number": 4,
+    "filename": "figure05-source-material.png",
+    "caption": "从回答来源打开《数学自学笔记》原文"
+  },
+  {
+    "number": 5,
+    "filename": "figure03-uploaded-skill.png",
+    "caption": "上传技能的源文件：元数据与指导正文"
+  },
+  {
+    "number": 6,
+    "filename": "figure06-skill-and-tool-result.png",
+    "caption": "技能启用时的回答及技能、工具、来源标记"
+  },
+  {
+    "number": 7,
+    "filename": "figure07-mcp-discovery.png",
+    "caption": "已连接的 MCP 服务及发现的两个工具"
+  },
+  {
+    "number": 8,
+    "filename": "figure08-mcp-calls.png",
+    "caption": "调用记录中本次会话的工具、状态、触发者与时间"
+  }
+]
