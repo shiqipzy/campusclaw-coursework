@@ -41,7 +41,7 @@ pdfmetrics.registerFont(TTFont('Hei', 'C:/Windows/Fonts/simhei.ttf'))
 pdfmetrics.registerFontFamily('Song', normal='Song', bold='Hei', italic='Song', boldItalic='Hei')
 WIDTH = A4[0] - 120
 BODY = ParagraphStyle('body', fontName='Song', fontSize=12, leading=21,
-                      firstLineIndent=24, wordWrap='CJK', spaceAfter=6,
+                      firstLineIndent=24, rightIndent=6, wordWrap='CJK', spaceAfter=6,
                       allowWidows=0, allowOrphans=0)
 HEADING = ParagraphStyle('heading', fontName='Hei', fontSize=13, leading=22,
                          spaceBefore=9, spaceAfter=7, keepWithNext=True, wordWrap='CJK')
@@ -137,7 +137,7 @@ paragraph('MCP 服务器返回的文本是“检查括号前的系数是否乘�
 paragraph('调用循环默认最多4轮，当前会话累计的可归属调用记录上限为12条。达到上限后，宿主停止工具执行，让模型使用已有信息作答。每次成功、被拒或出错都会追加工具记录，包含引用名称、触发用户、会话、轮次和时间。断开服务器会清空工具清单，已有技能引用再被使用时会明确被拒，不能继续沿用旧连接。')
 
 heading('六、运行结果和目前的不足')
-paragraph('本次验证仍在同一套 CampusClaw 上完成，另外建立了独立数据库和上传卷运行接口用例，避免混入日常材料。按 URL 组织的26个接口脚本全部通过，检查内容包括登录、助手与技能保存、知识库检索、创建会话、MCP 连接和断开，以及返回内容是否与数据库中的消息、绑定和调用记录一致。验证中使用了A、B班的教师和学生账号，分别检查角色权限和数据范围。')
+paragraph('本次验证仍在同一套 CampusClaw 上完成，另外建立了独立数据库和上传卷运行接口用例，避免混入日常材料。按 URL 组织的26个接口脚本全部通过，检查内容包括登录、助手与技能保存、知识库检索、创建会话以及 MCP 连接和断开。脚本还核对了接口返回内容与数据库中的消息、绑定和调用记录。验证中使用了A、B班的教师和学生账号，分别检查角色权限和数据范围。')
 paragraph('在前述去括号问题中，首轮模型选中了 formula_hint，工具记录为成功。工具结果回传后，最终回答是：“' + evidence['grounded_chat']['answer'] + '”回答给出了下一步检查建议，并带有资料编号，没有给出一道具体题目的最终得数。下面是日常运行页面中另一轮去括号提问，技能、工具状态和来源可以在同一条回答下看到：')
 screenshot('10-main-live-stream.png', (280, 308, 1245, 763), '图1  解题助手的回答、工具调用结果与资料来源')
 paragraph('异常情况也作了验证。服务器断开后，保存引用它的技能会返回400，已有绑定在对话中产生被拒记录；发现工具后再暂时停止 MCP 服务，会产生出错记录，但模型仍继续回答。把验收环境限制为1轮、累计2条后，记录达到上限再提问，调用数保持为2，没有继续请求工具，回答仍能正常返回。')
