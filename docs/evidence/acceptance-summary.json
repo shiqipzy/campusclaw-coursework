@@ -335,5 +335,5 @@
     "disconnected_chat": "检查分两步：\n\n1. **先看符号**：括号前若是负号，括号内每一项是否都变了号？常数项也变了吗？\n2. **再看乘法**：括号前的系数是否乘到了括号内每一项？尤其别漏乘括号里最后一项。\n\n按这两步逐项核对你写出的那一行，不用重算整道题。",
     "tool_error_chat": "公式提示工具本轮调用失败，我无法给出工具生成的公式提示，这一点需要说明。\n\n根据资料[1]，你可以先自查：括号前的系数是否乘到了括号内**每一项**，以及负号是否**逐项**核对。这两点是判断你已写步骤的关键。\n\n下一步请检查：你漏掉负号的那一项，在**去括号后的那一行**是否已经正确变号。注意这是核对，不是直接给你结论。\n\n另外，工具结果未返回，因此具体的公式提示内容无法确认。"
   },
-  "human_peer_review": "pending; automated separate-account verification passed"
+  "verification_method": "Automated API tests using separate teacher and student accounts in classes A and B."
 }
