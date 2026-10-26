@@ -21,7 +21,7 @@
   <div id="workspace" class="workspace" hidden>
     <header>
       <div class="brand"><span class="mark small">CC</span><span>CampusClaw <small>班级材料</small></span></div>
-      <div class="account"><span id="identity"></span><button id="logout" class="text-button">退出登录</button></div>
+      <div class="account"><a href="/assistant.html" class="download">智能助手</a><a href="/swagger/" class="text-button">API 文档</a><span id="identity"></span><button id="logout" class="text-button">退出登录</button></div>
     </header>
     <main>
       <aside>
@@ -30,6 +30,12 @@
           <form id="search-form"><label for="search-query">检索本班材料</label><div class="search-row"><input id="search-query" type="search" minlength="2" maxlength="200" placeholder="输入至少两个字" required><button type="submit">检索</button></div></form>
           <p id="search-message" role="status" aria-live="polite"></p>
           <div id="search-results" class="search-results"></div>
+        </section>
+        <section class="ask-panel" aria-label="知识库问答">
+          <h3>知识库问答</h3>
+          <form id="ask-form"><input id="ask-question" type="text" minlength="2" maxlength="200" placeholder="根据本班 Markdown 提问…" required><button type="submit">提问</button></form>
+          <p id="ask-answer" role="status" aria-live="polite"></p>
+          <div id="ask-sources" class="ask-sources"></div>
         </section>
         <div id="list" class="material-list"></div>
         <section id="upload-panel" class="upload-panel" hidden>

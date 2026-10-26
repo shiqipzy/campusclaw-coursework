@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -25,11 +26,13 @@ import (
 )
 
 type app struct {
-	db         *sql.DB
-	uploadDir  string
-	maxFile    int64
-	sessionTTL time.Duration
-	dummyHash  []byte
+	db        *sql.DB
+	uploadDir string
+	maxFile   int64
+	tokenTTL  time.Duration
+	jwtSecret []byte
+	dummyHash []byte
+	chatLocks sync.Map
 }
 
 type identity struct {
@@ -60,6 +63,10 @@ func main() {
 			log.Fatalf("%s is required", key)
 		}
 	}
+	secret := os.Getenv("JWT_SECRET")
+	if len(secret) < 32 {
+		log.Fatal("JWT_SECRET must be at least 32 characters")
+	}
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatal(err)
@@ -86,11 +93,14 @@ func main() {
 	if err := initDatabase(ctx, db, dir); err != nil {
 		log.Fatal(err)
 	}
+	if err := initLearning(ctx, db); err != nil {
+		log.Fatal(err)
+	}
 	dummy, err := bcrypt.GenerateFromPassword([]byte("not-the-right-password"), bcrypt.DefaultCost)
 	if err != nil {
 		log.Fatal(err)
 	}
-	a := &app{db: db, uploadDir: dir, maxFile: envInt("MAX_FILE_BYTES", 5<<20), sessionTTL: time.Duration(envInt("SESSION_HOURS", 8)) * time.Hour, dummyHash: dummy}
+	a := &app{db: db, uploadDir: dir, maxFile: envInt("MAX_FILE_BYTES", 5<<20), tokenTTL: time.Duration(envInt("TOKEN_HOURS", 8)) * time.Hour, jwtSecret: []byte(secret), dummyHash: dummy}
 	addr := envDefault("ADDR", ":8081")
 	log.Printf("listening on %s", addr)
 	log.Fatal(http.ListenAndServe(addr, a.routes()))
@@ -111,12 +121,14 @@ func envInt(key string, fallback int64) int64 {
 
 func (a *app) routes() http.Handler {
 	mux := http.NewServeMux()
+	a.learningRoutes(mux)
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK); io.WriteString(w, "ok\n") })
 	mux.HandleFunc("POST /api/login", a.login)
 	mux.HandleFunc("POST /api/logout", a.logout)
 	mux.HandleFunc("GET /api/me", a.me)
 	mux.HandleFunc("GET /api/materials", a.listMaterials)
 	mux.HandleFunc("GET /api/search", a.searchKnowledge)
+	mux.HandleFunc("POST /api/ask", a.askKnowledge)
 	mux.HandleFunc("POST /api/materials", a.upload)
 	mux.HandleFunc("GET /api/materials/{id}", a.getMaterial)
 	mux.HandleFunc("GET /api/materials/{id}/file", a.download)
@@ -152,21 +164,15 @@ func tokenHash(value string) string {
 	h := sha256.Sum256([]byte(value))
 	return hex.EncodeToString(h[:])
 }
-func setSessionCookie(w http.ResponseWriter, value string, ttl time.Duration) {
-	http.SetCookie(w, &http.Cookie{Name: "session", Value: value, Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: int(ttl.Seconds())})
-}
-func clearSessionCookie(w http.ResponseWriter) {
-	http.SetCookie(w, &http.Cookie{Name: "session", Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteLaxMode, MaxAge: -1})
-}
 func (a *app) currentUser(r *http.Request) (identity, int, error) {
 	var u identity
-	c, err := r.Cookie("session")
-	if err != nil || len(c.Value) != 64 {
+	id, _, raw, ok := a.verifyToken(r.Header.Get("Authorization"))
+	if !ok {
 		return u, http.StatusUnauthorized, nil
 	}
-	err = a.db.QueryRowContext(r.Context(), `SELECT u.id,u.username,u.role,u.class_id,c.name
-		FROM sessions s JOIN users u ON u.id=s.user_id JOIN classes c ON c.id=u.class_id
-		WHERE s.token_hash=? AND s.expires_at>UTC_TIMESTAMP()`, tokenHash(c.Value)).Scan(&u.ID, &u.Username, &u.Role, &u.ClassID, &u.ClassName)
+	err := a.db.QueryRowContext(r.Context(), `SELECT u.id,u.username,u.role,u.class_id,c.name
+		FROM users u JOIN classes c ON c.id=u.class_id WHERE u.id=?
+		AND NOT EXISTS (SELECT 1 FROM revoked_tokens t WHERE t.token_hash=? AND t.expires_at>UTC_TIMESTAMP())`, id, tokenHash(raw)).Scan(&u.ID, &u.Username, &u.Role, &u.ClassID, &u.ClassName)
 	if errors.Is(err, sql.ErrNoRows) {
 		return u, http.StatusUnauthorized, nil
 	}
@@ -217,42 +223,22 @@ func (a *app) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 401, "invalid username or password")
 		return
 	}
-	value, err := token()
+	value, err := a.issueToken(u.ID)
 	if err != nil {
 		fail(w, 500, "internal error")
 		return
 	}
-	tx, err := a.db.BeginTx(r.Context(), nil)
-	if err != nil {
-		serverFailure(w, err)
-		return
-	}
-	defer tx.Rollback()
-	if old, err := r.Cookie("session"); err == nil && len(old.Value) == 64 {
-		if _, err := tx.ExecContext(r.Context(), "DELETE FROM sessions WHERE token_hash=?", tokenHash(old.Value)); err != nil {
-			serverFailure(w, err)
-			return
-		}
-	}
-	if _, err := tx.ExecContext(r.Context(), "INSERT INTO sessions(token_hash,user_id,expires_at) VALUES(?,?,?)", tokenHash(value), u.ID, time.Now().UTC().Add(a.sessionTTL)); err != nil {
-		serverFailure(w, err)
-		return
-	}
-	if err := tx.Commit(); err != nil {
-		serverFailure(w, err)
-		return
-	}
-	setSessionCookie(w, value, a.sessionTTL)
-	writeJSON(w, 200, u)
+	writeJSON(w, 200, map[string]any{"token": value, "token_type": "Bearer", "expires_in": int64(a.tokenTTL.Seconds()), "user": u})
 }
 func (a *app) logout(w http.ResponseWriter, r *http.Request) {
-	if c, err := r.Cookie("session"); err == nil && len(c.Value) == 64 {
-		if _, err := a.db.ExecContext(r.Context(), "DELETE FROM sessions WHERE token_hash=?", tokenHash(c.Value)); err != nil {
-			serverFailure(w, err)
-			return
-		}
+	if _, ok := a.requireUser(w, r); !ok {
+		return
 	}
-	clearSessionCookie(w)
+	_, expires, raw, _ := a.verifyToken(r.Header.Get("Authorization"))
+	if _, err := a.db.ExecContext(r.Context(), "INSERT IGNORE INTO revoked_tokens(token_hash,expires_at) VALUES(?,?)", tokenHash(raw), time.Unix(expires, 0).UTC()); err != nil {
+		serverFailure(w, err)
+		return
+	}
 	w.WriteHeader(204)
 }
 func (a *app) me(w http.ResponseWriter, r *http.Request) {
@@ -495,7 +481,7 @@ func (a *app) upload(w http.ResponseWriter, r *http.Request) {
 var schema = []string{
 	`CREATE TABLE IF NOT EXISTS classes (id BIGINT PRIMARY KEY, name VARCHAR(100) NOT NULL UNIQUE) ENGINE=InnoDB`,
 	`CREATE TABLE IF NOT EXISTS users (id BIGINT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(100) NOT NULL UNIQUE, password_hash VARCHAR(100) NOT NULL, role ENUM('teacher','student') NOT NULL, class_id BIGINT NOT NULL, FOREIGN KEY(class_id) REFERENCES classes(id), INDEX(class_id)) ENGINE=InnoDB`,
-	`CREATE TABLE IF NOT EXISTS sessions (token_hash CHAR(64) PRIMARY KEY, user_id BIGINT NOT NULL, expires_at DATETIME(6) NOT NULL, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE, INDEX(expires_at)) ENGINE=InnoDB`,
+	`CREATE TABLE IF NOT EXISTS revoked_tokens (token_hash CHAR(64) PRIMARY KEY, expires_at DATETIME(6) NOT NULL, INDEX(expires_at)) ENGINE=InnoDB`,
 	`CREATE TABLE IF NOT EXISTS materials (id BIGINT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(255) NOT NULL, original_filename VARCHAR(255) NOT NULL, storage_name VARCHAR(100) NOT NULL UNIQUE, uploaded_by BIGINT NOT NULL, class_id BIGINT NOT NULL, created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6), FOREIGN KEY(uploaded_by) REFERENCES users(id), FOREIGN KEY(class_id) REFERENCES classes(id), INDEX(class_id)) ENGINE=InnoDB`,
 	`CREATE TABLE IF NOT EXISTS knowledge_entries (material_id BIGINT PRIMARY KEY, class_id BIGINT NOT NULL, content MEDIUMTEXT NOT NULL, FOREIGN KEY(material_id) REFERENCES materials(id) ON DELETE CASCADE, FOREIGN KEY(class_id) REFERENCES classes(id), INDEX(class_id)) ENGINE=InnoDB`,
 	`CREATE TABLE IF NOT EXISTS knowledge_chunks (id BIGINT AUTO_INCREMENT PRIMARY KEY, material_id BIGINT NOT NULL, chunk_index INT NOT NULL, class_id BIGINT NOT NULL, char_start INT NOT NULL, char_end INT NOT NULL, content TEXT NOT NULL, UNIQUE KEY(material_id,chunk_index), FOREIGN KEY(material_id) REFERENCES materials(id) ON DELETE CASCADE, FOREIGN KEY(class_id) REFERENCES classes(id), INDEX(class_id), FULLTEXT KEY ft_content(content) WITH PARSER ngram) ENGINE=InnoDB`,

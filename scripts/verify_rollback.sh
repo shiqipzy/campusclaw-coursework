@@ -18,12 +18,11 @@ sql 'DROP TRIGGER IF EXISTS campusclaw_verify_fail'
 trap "sql 'DROP TRIGGER IF EXISTS campusclaw_verify_fail'" EXIT
 sql "CREATE TRIGGER campusclaw_verify_fail BEFORE INSERT ON knowledge_entries FOR EACH ROW SET NEW.material_id = IF(NEW.content = 'TRIGGER_FAIL', 0, NEW.material_id)"
 
-cookiejar="$(mktemp)"
 sample="$(mktemp --suffix=.txt)"
-trap 'rm -f "$cookiejar" "$sample"; sql "DROP TRIGGER IF EXISTS campusclaw_verify_fail"' EXIT
+trap 'rm -f "$sample"; sql "DROP TRIGGER IF EXISTS campusclaw_verify_fail"' EXIT
 printf 'TRIGGER_FAIL' > "$sample"
-printf '{"username":"teacher_a","password":"%s"}' "$TEACHER_A_PASSWORD" | curl -fsS -c "$cookiejar" -H 'Content-Type: application/json' --data-binary @- "http://localhost:${WEB_PORT:-8080}/api/login" >/dev/null
-status="$(curl -sS -o /dev/null -w '%{http_code}' -b "$cookiejar" -F "file=@$sample;filename=rollback-test.txt" "http://localhost:${WEB_PORT:-8080}/api/materials")"
+token="$(printf '{"username":"teacher_a","password":"%s"}' "$TEACHER_A_PASSWORD" | curl -fsS -H 'Content-Type: application/json' --data-binary @- "http://localhost:${WEB_PORT:-8080}/api/login" | python3 -c 'import sys,json; print(json.load(sys.stdin)["token"])')"
+status="$(curl -sS -o /dev/null -w '%{http_code}' -H "Authorization: Bearer $token" -F "file=@$sample;filename=rollback-test.txt" "http://localhost:${WEB_PORT:-8080}/api/materials")"
 after="$(counts)"
 test "$status" = 503
 test "$before" = "$after"

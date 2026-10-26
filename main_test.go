@@ -26,18 +26,33 @@ func TestUnauthenticatedProtectedRoutes(t *testing.T) {
 	}
 }
 
-func TestHealthAndCookie(t *testing.T) {
+func TestHealthAndToken(t *testing.T) {
 	a := &app{}
 	rec := httptest.NewRecorder()
 	a.routes().ServeHTTP(rec, httptest.NewRequest("GET", "/health", nil))
 	if rec.Code != 200 || rec.Body.String() != "ok\n" {
 		t.Fatalf("health: %d %q", rec.Code, rec.Body.String())
 	}
-	rec = httptest.NewRecorder()
-	setSessionCookie(rec, "opaque", 8*time.Hour)
-	cookie := rec.Result().Cookies()[0]
-	if cookie.Name != "session" || !cookie.HttpOnly || cookie.SameSite != http.SameSiteLaxMode || cookie.Path != "/" || cookie.MaxAge != 8*3600 {
-		t.Fatalf("unexpected cookie: %+v", cookie)
+	a.jwtSecret = []byte("12345678901234567890123456789012")
+	a.tokenTTL = 8 * time.Hour
+	jwt, err := a.issueToken(42)
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, _, _, ok := a.verifyToken("Bearer " + jwt)
+	if !ok || id != 42 {
+		t.Fatal("valid bearer token rejected")
+	}
+	if _, _, _, ok := a.verifyToken("Bearer " + jwt + "x"); ok {
+		t.Fatal("tampered token accepted")
+	}
+	if _, _, _, ok := a.verifyToken("session=" + jwt); ok {
+		t.Fatal("non-bearer token accepted")
+	}
+	a.tokenTTL = -time.Hour
+	expired, _ := a.issueToken(42)
+	if _, _, _, ok := a.verifyToken("Bearer " + expired); ok {
+		t.Fatal("expired token accepted")
 	}
 }
 

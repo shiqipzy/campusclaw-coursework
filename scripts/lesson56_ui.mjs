@@ -1,0 +1,38 @@
+import {chromium} from 'playwright-core';
+import {readFileSync,mkdirSync,writeFileSync} from 'node:fs';
+import {fileURLToPath} from 'node:url';
+import {dirname,resolve} from 'node:path';
+const root=resolve(dirname(fileURLToPath(import.meta.url)),'..');
+const cfg=Object.fromEntries(readFileSync(resolve(root,'.env'),'utf8').split(/\r?\n/).filter(x=>x.includes('=')).map(x=>x.split(/=(.*)/s).slice(0,2)));
+const base=process.env.TEST_BASE_URL||'http://127.0.0.1:18081';
+const out=resolve(root,'deliverables/lesson56/screenshots');mkdirSync(out,{recursive:true});
+const browser=await chromium.launch({executablePath:'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',headless:true});
+const errors=[];
+try{
+ const page=await browser.newPage({viewport:{width:1440,height:1000},deviceScaleFactor:1});
+ page.on('pageerror',e=>errors.push(e.message));
+ await page.goto(base);await page.locator('#username').fill('teacher_a');await page.locator('#password').fill(cfg.TEACHER_A_PASSWORD);await page.locator('#login-form button').click();await page.locator('#workspace').waitFor({state:'visible'});
+ await page.getByRole('link',{name:'智能助手',exact:true}).click();await page.locator('#agent-cards .card').first().waitFor();
+ await page.screenshot({path:resolve(out,'01-apps.png')});
+ await page.locator('[data-tab="agents"]').click();await page.locator('#agent-list .card button').first().click();await page.locator('#template').selectOption('0');
+ if(!(await page.locator('#agent-prompt').inputValue()).includes('耐心'))throw Error('Template did not apply');
+ await page.screenshot({path:resolve(out,'02-agent-config.png'),fullPage:true});
+ await page.locator('[data-tab="skills"]').click();await page.screenshot({path:resolve(out,'03-skills.png'),fullPage:true});
+ await page.locator('[data-tab="tools"]').click();await page.locator('.tool-detail').first().locator('summary').click();await page.screenshot({path:resolve(out,'04-mcp.png'),fullPage:true});
+ await page.locator('[data-tab="logs"]').click();await page.locator('#log-list tr').first().waitFor();
+ const logText=await page.locator('#log-list').innerText();for(const s of ['成功','被拒','出错'])if(!logText.includes(s))throw Error('Missing call status: '+s);
+ await page.screenshot({path:resolve(out,'05-call-logs.png')});
+ await page.goto(base+'/swagger/');await page.locator('.swagger-ui .opblock').first().waitFor();await page.screenshot({path:resolve(out,'06-swagger.png'),fullPage:true});
+ const loginBlock=page.locator('.opblock-post').filter({has:page.locator('[data-path="/api/login"]')});
+ await loginBlock.locator('.opblock-summary').click();await loginBlock.getByRole('button',{name:'Try it out'}).click();await loginBlock.locator('textarea').fill(JSON.stringify({username:'teacher_a',password:cfg.TEACHER_A_PASSWORD}));
+ await loginBlock.getByRole('button',{name:'Execute',exact:true}).click();await loginBlock.locator('.responses-inner .response-col_status').filter({hasText:'200'}).first().waitFor();
+ const login=await page.request.post(base+'/api/login',{data:{username:'student_a1',password:cfg.STUDENT_A1_PASSWORD}});const auth=await login.json();
+ await page.goto(base+'/assistant.html');await page.evaluate(t=>sessionStorage.setItem('campusclaw_token',t),auth.token);await page.reload();await page.locator('#agent-cards .card').first().waitFor();
+ await page.locator('#conversations button').filter({hasText:'我在解方程去括号时总漏掉负号'}).first().click();await page.locator('#messages .message.assistant').first().waitFor();
+ await page.screenshot({path:resolve(out,'07-conversation.png'),fullPage:true});await page.locator('#trace-button').click();await page.locator('#trace-dialog[open]').waitFor();await page.screenshot({path:resolve(out,'08-llm-trace.png')});await page.locator('#trace-close').click();
+ if(await page.locator('.teacher:visible').count())throw Error('Student teacher controls visible');
+ await page.setViewportSize({width:390,height:844});await page.screenshot({path:resolve(out,'09-mobile.png'),fullPage:true});
+ if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth))throw Error('Mobile horizontal overflow');
+ if(errors.length)throw Error(errors.join('\n'));writeFileSync(resolve(root,'deliverables/lesson56/ui-results.json'),JSON.stringify({status:'PASS',screenshots:9,browser:'Microsoft Edge headless',errors},null,2));
+ console.log('PASS: templates, skill/MCP/audit pages, Swagger login request, own conversation traces, mobile; 9 screenshots');
+}finally{await browser.close();}

@@ -19,11 +19,33 @@ services:
       TEACHER_A_PASSWORD: ${TEACHER_A_PASSWORD}
       STUDENT_A1_PASSWORD: ${STUDENT_A1_PASSWORD}
       STUDENT_B1_PASSWORD: ${STUDENT_B1_PASSWORD}
+      TEACHER_B_PASSWORD: ${TEACHER_B_PASSWORD:-}
+      JWT_SECRET: ${JWT_SECRET}
+      AI_API_KEY: ${AI_API_KEY:-}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com}
+      AI_MODEL: ${AI_MODEL:-deepseek-flash}
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+      MCP_BASE_URL: http://mcp-demo:8090
+      MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-mcp-demo,localhost,127.0.0.1}
+      MCP_MAX_ROUNDS: ${MCP_MAX_ROUNDS:-4}
+      MCP_MAX_CALLS: ${MCP_MAX_CALLS:-12}
     volumes:
       - uploads:/uploads
     depends_on:
       db:
         condition: service_healthy
+    restart: unless-stopped
+  mcp-demo:
+    build:
+      context: .
+      dockerfile: mcp-server/Dockerfile
+    environment:
+      MCP_AUTH_TOKEN: ${MCP_AUTH_TOKEN}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://127.0.0.1:8090/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
   db:
     image: mysql:8.0

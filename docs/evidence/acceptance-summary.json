@@ -1,0 +1,339 @@
+{
+  "timestamp": "2026-10-27 00:36:10",
+  "environment": "campusclaw_acceptance",
+  "api_cases": [
+    {
+      "case": "cases\\api\\login\\POST.py",
+      "status": "PASS",
+      "seconds": 1.53,
+      "detail": "4个真实账号登录，JWT及用户记录一致；错误密码401"
+    },
+    {
+      "case": "cases\\api\\me\\GET.py",
+      "status": "PASS",
+      "seconds": 0.05,
+      "detail": "A/B班身份正确；未认证401"
+    },
+    {
+      "case": "cases\\api\\materials\\POST.py",
+      "status": "PASS",
+      "seconds": 0.62,
+      "detail": "UTF-8材料原文与切片入库；学生上传403"
+    },
+    {
+      "case": "cases\\api\\search\\GET.py",
+      "status": "PASS",
+      "seconds": 0.02,
+      "detail": "命中可回溯切片；B班伪造class_id仍无A班命中"
+    },
+    {
+      "case": "cases\\api\\agents\\GET.py",
+      "status": "PASS",
+      "seconds": 0.01,
+      "detail": "内置3个应用，A/B班列表隔离"
+    },
+    {
+      "case": "cases\\api\\prompt-templates\\GET.py",
+      "status": "PASS",
+      "seconds": 0.01,
+      "detail": "3份可套用提示词模板"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\GET.py",
+      "status": "PASS",
+      "seconds": 0.04,
+      "detail": "has_token=true但无令牌字段/原文；同班学生403，异班教师空列表"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\GET.py",
+      "status": "PASS",
+      "seconds": 0.0,
+      "detail": "异班直接访问与不存在ID的404响应完全一致"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\connect\\POST.py",
+      "status": "PASS",
+      "seconds": 1.24,
+      "detail": "真实容器/health、initialize、tools/list、tools/call通过；连续连接不翻倍"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\tools\\GET.py",
+      "status": "PASS",
+      "seconds": 0.02,
+      "detail": "名称、完整说明和输入JSON Schema均来自发现结果"
+    },
+    {
+      "case": "cases\\api\\skills\\upload\\POST.py",
+      "status": "PASS",
+      "seconds": 0.33,
+      "detail": "上传技能源文件保留；解析3个工具，数据库一致；学生403"
+    },
+    {
+      "case": "cases\\api\\skills\\POST.py",
+      "status": "PASS",
+      "seconds": 0.01,
+      "detail": "合法创建；不存在工具引用、重复元数据400"
+    },
+    {
+      "case": "cases\\api\\agents\\POST.py",
+      "status": "PASS",
+      "seconds": 0.36,
+      "detail": "助手、技能和材料绑定入库；学生403，跨班绑定404"
+    },
+    {
+      "case": "cases\\api\\conversations\\POST.py",
+      "status": "PASS",
+      "seconds": 0.32,
+      "detail": "新会话锁定智能体；跨班新建404"
+    },
+    {
+      "case": "cases\\api\\conversations\\{id}\\messages\\POST.py",
+      "status": "PASS",
+      "seconds": 6.19,
+      "detail": "真实DeepSeek/MCP成功及服务停机出错均验证；轮次上限后停止调用并继续流式作答，正文与DB一致"
+    },
+    {
+      "case": "cases\\api\\conversations\\{id}\\traces\\GET.py",
+      "status": "PASS",
+      "seconds": 0.02,
+      "detail": "实测请求含提示词、选中技能说明、最多4个切片及候选工具；工具结果在role=tool；最终stream=true"
+    },
+    {
+      "case": "cases\\api\\conversations\\{id}\\GET.py",
+      "status": "PASS",
+      "seconds": 0.05,
+      "detail": "同班其他用户也不能读取会话/请求详情；跨用户与不存在404一致"
+    },
+    {
+      "case": "cases\\api\\agents\\{id}\\PUT.py",
+      "status": "PASS",
+      "seconds": 6.24,
+      "detail": "停用后学生不可选用；已有会话仍可提问；检索落空仍真实作答，无伪造引用"
+    },
+    {
+      "case": "cases\\api\\skills\\{id}\\PUT.py",
+      "status": "PASS",
+      "seconds": 1.21,
+      "detail": "现有会话下一轮读取新配置；停用技能不参与路由"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\disconnect\\POST.py",
+      "status": "PASS",
+      "seconds": 1.91,
+      "detail": "断开即清单为空，技能保存400；已有绑定调用明确被拒并入库，对话继续"
+    },
+    {
+      "case": "cases\\api\\mcp\\calls\\GET.py",
+      "status": "PASS",
+      "seconds": 0.05,
+      "detail": "成功/被拒/出错3类真实记录含工具、触发者、会话、轮次、时间；B班教师看不到A班记录"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\POST.py",
+      "status": "PASS",
+      "seconds": 0.05,
+      "detail": "不可达服务连接502，保留可读错误，状态为未连接且清单为空"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\PUT.py",
+      "status": "PASS",
+      "seconds": 0.02,
+      "detail": "修改时空token保留服务端密文，须重新连接"
+    },
+    {
+      "case": "cases\\api\\mcp\\servers\\{id}\\DELETE.py",
+      "status": "PASS",
+      "seconds": 0.32,
+      "detail": "删除服务器后数据库不存在该配置，历史调用不级联删除"
+    },
+    {
+      "case": "cases\\api\\skills\\{id}\\DELETE.py",
+      "status": "PASS",
+      "seconds": 0.31,
+      "detail": "删除技能后数据库一致"
+    },
+    {
+      "case": "cases\\openapi.json\\GET.py",
+      "status": "PASS",
+      "seconds": 0.02,
+      "detail": "OpenAPI含35项操作；Swagger页面可访问"
+    }
+  ],
+  "ui": {
+    "status": "PASS",
+    "screenshots": 9,
+    "browser": "Microsoft Edge headless",
+    "errors": [],
+    "live_stream": {
+      "status": "PASS",
+      "browser_text_updates": 85,
+      "main_url": "http://127.0.0.1:8080",
+      "actual_form_submission": true,
+      "tool_status": "ok",
+      "citations": true
+    }
+  },
+  "round_limit": {
+    "max_rounds": 1,
+    "limited": true,
+    "answer_returned": true
+  },
+  "cumulative_limit": {
+    "max_calls": 2,
+    "before": 2,
+    "after": 2,
+    "limited": true,
+    "answer": "工具本轮无法再调用，以下基于资料 [1] 判断。\n\n下一步只检查这一处：括号前是负号时，括号内每一项是否都变了号 [1]。请把去括号后的那一行写出来，逐项对照原方程——特别注意括号内第一项和常数项。我目前看不到你的具体式子，无法确定你漏在哪一项。"
+  },
+  "mcp_direct": {
+    "id": 1,
+    "jsonrpc": "2.0",
+    "result": {
+      "content": [
+        {
+          "text": "2 m = 200 cm",
+          "type": "text"
+        }
+      ],
+      "isError": false
+    }
+  },
+  "isolation": {
+    "cross": {
+      "error": "not found"
+    },
+    "missing": {
+      "error": "not found"
+    }
+  },
+  "tool_call_logs": [
+    {
+      "conversation_id": 4,
+      "created_at": "2026-10-26T16:36:07.746919Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 12,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "unit_convert@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 4,
+      "created_at": "2026-10-26T16:36:07.742533Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 11,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 4,
+      "created_at": "2026-10-26T16:36:01.045936Z",
+      "detail": "检查括号前的系数是否乘到括号内每一项，负号是否正确分配。",
+      "id": 10,
+      "round": 1,
+      "status": "ok",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 5,
+      "created_at": "2026-10-26T16:35:58.129487Z",
+      "detail": "MCP 服务器不可达或超时",
+      "id": 9,
+      "round": 1,
+      "status": "error",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 4,
+      "created_at": "2026-10-26T16:35:54.886334Z",
+      "detail": "检查括号前的系数是否乘到括号内每一项，负号是否正确分配。",
+      "id": 8,
+      "round": 1,
+      "status": "ok",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 2,
+      "created_at": "2026-10-26T16:27:02.619133Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 7,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "unit_convert@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 2,
+      "created_at": "2026-10-26T16:27:02.615467Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 6,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 3,
+      "created_at": "2026-10-26T16:26:58.078821Z",
+      "detail": "MCP 服务器不可达或超时",
+      "id": 5,
+      "round": 1,
+      "status": "error",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 2,
+      "created_at": "2026-10-26T16:26:54.61638Z",
+      "detail": "检查括号前的系数是否乘到括号内每一项，负号是否正确分配。",
+      "id": 4,
+      "round": 1,
+      "status": "ok",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 1,
+      "created_at": "2026-10-26T16:24:15.188644Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 3,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "unit_convert@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 1,
+      "created_at": "2026-10-26T16:24:15.184615Z",
+      "detail": "工具未连接、不存在或不在发现清单中",
+      "id": 2,
+      "round": 0,
+      "status": "denied",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    },
+    {
+      "conversation_id": 1,
+      "created_at": "2026-10-26T16:24:10.366591Z",
+      "detail": "检查括号前的系数是否乘到括号内每一项，负号是否正确分配。",
+      "id": 1,
+      "round": 1,
+      "status": "ok",
+      "tool_ref": "formula_hint@campus-tools",
+      "username": "student_a1"
+    }
+  ],
+  "answers": {
+    "grounded_chat": "你还没写出具体步骤，我无法判断对错。按 [1] 和公式提示，下一步请先检查：括号前的系数是否已乘到括号内每一项，负号是否有逐项分配。把去括号后的那一行写出来，我再帮你看下一步。",
+    "ungrounded_chat": "给你一条：把当前这道去括号的题拆成“只做一行”，写完这一行就停，核对完负号再动笔下一行。",
+    "disabled_skill_chat": "去括号时注意两点 [1]：\n\n1. 括号前的系数要乘到括号内**每一项**；\n2. 括号前是负号时，负号要**逐项**分配，每一项都变号，不能只变第一项。\n\n写完去括号那一行后，可以按这两点逐项核对。",
+    "disconnected_chat": "检查分两步：\n\n1. **先看符号**：括号前若是负号，括号内每一项是否都变了号？常数项也变了吗？\n2. **再看乘法**：括号前的系数是否乘到了括号内每一项？尤其别漏乘括号里最后一项。\n\n按这两步逐项核对你写出的那一行，不用重算整道题。",
+    "tool_error_chat": "公式提示工具本轮调用失败，我无法给出工具生成的公式提示，这一点需要说明。\n\n根据资料[1]，你可以先自查：括号前的系数是否乘到了括号内**每一项**，以及负号是否**逐项**核对。这两点是判断你已写步骤的关键。\n\n下一步请检查：你漏掉负号的那一项，在**去括号后的那一行**是否已经正确变号。注意这是核对，不是直接给你结论。\n\n另外，工具结果未返回，因此具体的公式提示内容无法确认。"
+  },
+  "human_peer_review": "pending; automated separate-account verification passed"
+}

@@ -1,12 +1,12 @@
 """End-to-end check for lesson-four search. Run only against a disposable stack."""
 
 import argparse
-import http.cookiejar
 import json
+import secrets
 from pathlib import Path
 from urllib.error import HTTPError
 from urllib.parse import urlencode
-from urllib.request import HTTPCookieProcessor, ProxyHandler, Request, build_opener
+from urllib.request import ProxyHandler, Request, build_opener
 
 
 def read_env():
@@ -18,7 +18,7 @@ def read_env():
 
 
 def client(base, username, password):
-    opener = build_opener(HTTPCookieProcessor(http.cookiejar.CookieJar()), ProxyHandler({}))
+    opener = build_opener(ProxyHandler({}))
     request = Request(
         base + "/api/login",
         json.dumps({"username": username, "password": password}).encode(),
@@ -26,6 +26,9 @@ def client(base, username, password):
     )
     with opener.open(request) as response:
         assert response.status == 200
+        data = json.load(response)
+        assert "Set-Cookie" not in response.headers
+    opener.addheaders = [("Authorization", "Bearer " + data["token"])]
     return opener
 
 
@@ -67,7 +70,8 @@ def main():
     # Upload through the existing teacher-only API, then verify that the
     # student's hit points to exactly the same text and only the same class.
     boundary = "lesson4boundary"
-    body = f"# 检索验收\n紫色鲸鱼课表 {boundary} 只对A班开放。\n".encode()
+    phrase = "紫色鲸鱼课表" + secrets.token_hex(4)
+    body = f"# 检索验收\n{phrase} {boundary} 只对A班开放。\n".encode()
     multipart = (
         f"--{boundary}\r\nContent-Disposition: form-data; name=\"file\"; filename=\"search-check.md\"\r\n"
         "Content-Type: text/markdown\r\n\r\n"
@@ -75,14 +79,22 @@ def main():
     with teacher.open(Request(base + "/api/materials", multipart, {"Content-Type": f"multipart/form-data; boundary={boundary}"})) as response:
         material_id = json.load(response)["id"]
         assert response.status == 201
-    hits = search(student_a, base, "紫色鲸鱼课表")["hits"]
+    hits = search(student_a, base, phrase)["hits"]
     hit = next(hit for hit in hits if hit["material_id"] == material_id)
     assert hit["material_url"] == f"/api/materials/{material_id}"
     with student_a.open(base + hit["material_url"]) as response:
         material = json.load(response)
     assert material["content"][hit["char_start"] : hit["char_end"]].startswith(hit["excerpt"])
-    assert not search(student_b, base, "紫色鲸鱼课表", class_id=1)["hits"]
-    print("PASS: authentication, class isolation, source URL protection, no-result response, upload indexing, and source offsets")
+    assert not search(student_b, base, phrase, class_id=1)["hits"]
+    question = Request(base + "/api/ask", json.dumps({"question": phrase}).encode(), {"Content-Type": "application/json"})
+    with student_a.open(question) as response:
+        answer = json.load(response)
+    assert answer["sources"] and any(source["material_id"] == material_id for source in answer["sources"])
+    assert answer["answer"]
+    b_question = Request(base + "/api/ask", json.dumps({"question": phrase}).encode(), {"Content-Type": "application/json"})
+    with student_b.open(b_question) as response:
+        assert not json.load(response)["sources"]
+    print("PASS: Bearer authentication, class isolation, source protection, markdown upload/search, and grounded answer")
 
 
 if __name__ == "__main__":

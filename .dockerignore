@@ -5,3 +5,7 @@ deliverables
 uploads
 data
 *.exe
+tmp
+output
+apitest
+docs/evidence

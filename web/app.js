@@ -1,10 +1,15 @@
 const $ = (id) => document.getElementById(id);
 let currentUser = null;
 let selectedID = null;
+let accessToken = sessionStorage.getItem('campusclaw_token');
 
 async function api(path, options = {}) {
-  const response = await fetch(path, { credentials: 'same-origin', ...options });
+  const headers = new Headers(options.headers || {});
+  if (accessToken && path !== '/api/login') headers.set('Authorization', `Bearer ${accessToken}`);
+  const response = await fetch(path, { ...options, headers });
   if (response.status === 401 && path !== '/api/login') {
+    accessToken = null;
+    sessionStorage.removeItem('campusclaw_token');
     showLogin();
     throw new Error('请重新登录');
   }
@@ -22,6 +27,8 @@ function showLogin() {
   $('search-query').value = '';
   $('search-results').replaceChildren();
   $('search-message').textContent = '';
+  $('ask-answer').textContent = '';
+  $('ask-sources').replaceChildren();
 }
 function showWorkspace(user) {
   currentUser = user;
@@ -54,7 +61,7 @@ async function openMaterial(id) {
   $('title').textContent = m.title;
   $('meta').textContent = `${m.filename} · ${new Date(m.created_at).toLocaleString('zh-CN')}`;
   $('content').textContent = m.content;
-  $('download').href = `/api/materials/${id}/file`;
+  $('download').dataset.id = id;
   for (const el of document.querySelectorAll('.item')) el.classList.toggle('active', Number(el.dataset.id) === id);
 }
 function showSearchResults(data) {
@@ -81,18 +88,37 @@ $('search-form').onsubmit = async (event) => {
   catch (err) { $('search-message').textContent = err.message; }
   finally { button.disabled = false; }
 };
+$('ask-form').onsubmit = async (event) => {
+  event.preventDefault();
+  const button = event.target.querySelector('button'); button.disabled = true;
+  $('ask-answer').textContent = '正在查找资料并生成回答…';
+  $('ask-sources').replaceChildren();
+  try {
+    const data = await api('/api/ask', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ question: $('ask-question').value }) });
+    $('ask-answer').textContent = data.answer;
+    for (const source of data.sources) {
+      const link = document.createElement('button'); link.type = 'button'; link.className = 'source-link';
+      link.textContent = `${source.title} · 切片 ${source.chunk_index}`;
+      link.onclick = () => openMaterial(source.material_id).catch((err) => { $('ask-answer').textContent = err.message; });
+      $('ask-sources').append(link);
+    }
+  } catch (err) { $('ask-answer').textContent = err.message; }
+  finally { button.disabled = false; }
+};
 $('login-form').onsubmit = async (event) => {
   event.preventDefault();
   $('login-error').textContent = '';
   const button = event.target.querySelector('button'); button.disabled = true;
   try {
-    const user = await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: $('username').value, password: $('password').value }) });
-    showWorkspace(user); await refreshList();
+    const result = await api('/api/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: $('username').value, password: $('password').value }) });
+    accessToken = result.token;
+    sessionStorage.setItem('campusclaw_token', accessToken);
+    showWorkspace(result.user); await refreshList();
   } catch (err) { $('login-error').textContent = err.message; }
   finally { button.disabled = false; }
 };
 $('logout').onclick = async () => {
-  try { await api('/api/logout', { method: 'POST' }); selectedID = null; showLogin(); }
+  try { await api('/api/logout', { method: 'POST' }); accessToken = null; sessionStorage.removeItem('campusclaw_token'); selectedID = null; showLogin(); }
   catch (err) { window.alert(err.message); }
 };
 $('upload-form').onsubmit = async (event) => {
@@ -108,4 +134,15 @@ $('upload-form').onsubmit = async (event) => {
   } catch (err) { $('upload-message').textContent = err.message; }
   finally { button.disabled = false; }
 };
-(async () => { try { const user = await api('/api/me'); showWorkspace(user); await refreshList(); } catch (err) { showLogin(); } })();
+$('download').onclick = async (event) => {
+  event.preventDefault();
+  try {
+    const response = await fetch(`/api/materials/${event.currentTarget.dataset.id}/file`, { headers: { Authorization: `Bearer ${accessToken}` } });
+    if (!response.ok) throw new Error(`下载失败 (${response.status})`);
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = $('meta').textContent.split(' · ')[0]; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) { window.alert(err.message); }
+};
+(async () => { if (!accessToken) { showLogin(); return; } try { const user = await api('/api/me'); showWorkspace(user); await refreshList(); } catch (err) { showLogin(); } })();

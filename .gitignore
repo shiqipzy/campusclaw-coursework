@@ -5,3 +5,7 @@ data/
 node_modules/
 scripts/__pycache__/
 deliverables/
+apitest/**/__pycache__/
+apitest/__pycache__/
+tmp/
+output/
